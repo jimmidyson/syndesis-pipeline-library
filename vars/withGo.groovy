@@ -13,7 +13,7 @@ def call(Map parameters = [:], body) {
     def name = parameters.get('name', 'go')
 
     def cloud = parameters.get('cloud', 'openshift')
-    def goImage = parameters.get('goImage', 'golang:1.8.3')
+    def goImage = parameters.get('goImage', 'syndesis/go-18-centos7:latest')
 
     def envVars = parameters.get('envVars', [])
     def inheritFrom = parameters.get('inheritFrom', 'base')
@@ -22,6 +22,10 @@ def call(Map parameters = [:], body) {
     def idleMinutes = parameters.get('idle', 10)
 
     def alwaysPullImage = goImage.endsWith(":latest")
+
+    envVars.add(containerEnvVar(key: 'LD_PRELOAD',value: 'libnss_wrapper.so'))
+    envVars.add(containerEnvVar(key: 'NSS_WRAPPER_PASSWD',value: '/tmp/passwd'))
+    envVars.add(containerEnvVar(key: 'NSS_WRAPPER_GROUP', value: '/etc/group'))
 
     podTemplate(
         cloud: "${cloud}",
@@ -35,10 +39,11 @@ def call(Map parameters = [:], body) {
             containerTemplate(
                 name: 'go',
                 image: "${goImage}",
-                command: '/bin/sh -c',
+                command: '/usr/local/bin/chkpasswd',
                 args: 'cat',
                 ttyEnabled: true,
-                envVars: envVars
+                envVars: envVars,
+                alwaysPullImage: alwaysPullImage
             )
         ],
     ) {
